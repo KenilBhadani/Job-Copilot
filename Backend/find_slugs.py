@@ -18,14 +18,14 @@ def variants(name: str) -> list[str]:
     """Likely board slugs for a company name, e.g. 'Mistral AI' -> mistralai, mistral-ai ..."""
     clean = re.sub(r"[^a-z0-9 ]", "", name.lower()).strip()
     squashed, dashed = clean.replace(" ", ""), clean.replace(" ", "-")
-    out = [squashed, dashed, squashed + "hq", squashed + "inc"]
+    out = [squashed, dashed, squashed + "hq"]
     return list(dict.fromkeys(v for v in out if v))  # remove duplicates, keep order
 
 
 async def probe(client, sem, name, source, slug):
     async with sem:
         try:
-            jobs = await fetch_company(client, {"name": name, "source": source, "slug": slug})
+            jobs = await fetch_company(client, {"name": name, "source": source, "slug": slug},with_details=False)
             return (source, slug, jobs) if jobs else None
         except Exception:
             return None  # 404 or network error means "not this board"

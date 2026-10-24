@@ -25,3 +25,18 @@ companies:
   - { name: Elastic, source: greenhouse, slug: elastic }
   - { name: Meesho,  source: lever,      slug: meesho }
   - { name: Zeta,    source: lever,      slug: zeta }
+  - { name: Paytm,       source: lever,           slug: paytm }
+  - { name: MongoDB,     source: greenhouse,      slug: mongodb }
+  - { name: Zscaler,     source: greenhouse,      slug: zscaler }
+  - { name: Freshworks,  source: smartrecruiters, slug: freshworks }
+  - { name: Rubrik,      source: greenhouse,      slug: rubrik }
+  - { name: Mindtickle,  source: lever,           slug: mindtickle }
+  - { name: Mindtickle,  source: smartrecruiters, slug: mindtickle }
+  - { name: Druva,       source: greenhouse,      slug: druva }
+  - { name: Commvault,   source: greenhouse,      slug: commvault }
+  - { name: Twilio,      source: greenhouse,      slug: twilio }
+  - { name: Groww,       source: greenhouse,      slug: groww }
+  - { name: Coinbase,    source: greenhouse,      slug: coinbase }
+  - { name: Samsara,     source: greenhouse,      slug: samsara }
+  - { name: Observe.AI,  source: greenhouse,      slug: observeai }
+  - { name: Atlan,       source: ashby,           slug: atlan }

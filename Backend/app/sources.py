@@ -17,6 +17,11 @@ GREENHOUSE_URL = "https://boards-api.greenhouse.io/v1/boards/{slug}/jobs?content
 LEVER_URL = "https://api.lever.co/v0/postings/{slug}?mode=json"
 ASHBY_URL = "https://api.ashbyhq.com/posting-api/job-board/{slug}"
 
+RECRUITEE_URL = "https://{slug}.recruitee.com/api/offers/"
+WORKABLE_URL = "https://apply.workable.com/api/v1/widget/accounts/{slug}?details=true"
+SMARTRECRUITERS_URL = "https://api.smartrecruiters.com/v1/companies/{slug}/postings?limit=100&offset={offset}"
+SMARTRECRUITERS_DETAIL_URL = "https://api.smartrecruiters.com/v1/companies/{slug}/postings/{id}"
+
 
 # ---- helpers -----------------------------------------------------------------------
 
@@ -100,20 +105,100 @@ def normalize_ashby(company: dict, payload: dict) -> list[dict]:
                         j.get("jobUrl"), desc, j.get("publishedAt")))
     return out
 
+def normalize_recruitee(company: dict, payload: dict) -> list[dict]:
+    out = []
+    for j in payload.get("offers", []):
+        if j.get("status") not in (None, "published"):
+            continue
+        loc = j.get("location") or ", ".join(x for x in (j.get("city"), j.get("country")) if x)
+        desc = "\n".join(p for p in (html_to_text(j.get("description")),
+                                     html_to_text(j.get("requirements"))) if p)
+        out.append(_job("recruitee", company, j["id"], j.get("title"), loc,
+                        bool(j.get("remote")) or _is_remote(loc, j.get("title")),
+                        j.get("careers_url"), desc, j.get("published_at") or j.get("created_at")))
+    return out
+
+
+def normalize_workable(company: dict, payload: dict) -> list[dict]:
+    out = []
+    for j in payload.get("jobs", []):
+        loc = ", ".join(x for x in (j.get("city"), j.get("state"), j.get("country")) if x)
+        remote = bool(j.get("telecommuting")) or _is_remote(loc, j.get("title"))  # Workable's name for remote
+        out.append(_job("workable", company, j.get("shortcode") or j.get("id"), j.get("title"), loc,
+                        remote, j.get("url") or j.get("shortlink"), html_to_text(j.get("description")),
+                        j.get("published_on") or j.get("created_at")))
+    return out
+
+
+def normalize_smartrecruiters(company: dict, postings: list, details: dict) -> list[dict]:
+    """`postings` is the list response (no descriptions); `details` maps id -> detail response."""
+    out = []
+    for j in postings:
+        loc = j.get("location") or {}
+        full = loc.get("fullLocation") or ", ".join(
+            x for x in (loc.get("city"), loc.get("region"), (loc.get("country") or "").upper()) if x)
+        sections = ((details.get(j["id"]) or {}).get("jobAd") or {}).get("sections") or {}
+        desc = "\n".join(html_to_text((sections.get(k) or {}).get("text"))
+                         for k in ("jobDescription", "qualifications", "additionalInformation"))
+        url = (details.get(j["id"]) or {}).get("postingUrl") or \
+            f"https://jobs.smartrecruiters.com/{company['slug']}/{j['id']}"
+        out.append(_job("smartrecruiters", company, j["id"], j.get("name"), full,
+                        bool(loc.get("remote")) or _is_remote(full, j.get("name")),
+                        url, desc.strip(), j.get("releasedDate")))
+    return out
 
 _SOURCES = {
     "greenhouse": (GREENHOUSE_URL, normalize_greenhouse),
     "lever": (LEVER_URL, normalize_lever),
     "ashby": (ASHBY_URL, normalize_ashby),
+    "recruitee": (RECRUITEE_URL, normalize_recruitee),
+    "workable": (WORKABLE_URL, normalize_workable),
 }
-
-SOURCE_NAMES = tuple(_SOURCES)  # ('greenhouse', 'lever', 'ashby')
+# SmartRecruiters needs extra calls, so it has its own fetch function below.
+SOURCE_NAMES = tuple(_SOURCES) + ("smartrecruiters",)
 # ---- fetching ----------------------------------------------------------------------
 
-async def fetch_company(client, company: dict) -> list[dict]:
+async def _fetch_smartrecruiters(client, company: dict, with_details: bool,
+                                 max_pages: int = 5, max_details: int = 150) -> list[dict]:
+    """List postings (100 per page), keep India ones, then fetch each one's description.
+
+    The list has no descriptions, so each India job costs one extra call (capped).
+    """
+    slug = company["slug"]
+    listed: list[dict] = []
+    for page in range(max_pages):
+        resp = await client.get(SMARTRECRUITERS_URL.format(slug=slug, offset=page * 100))
+        resp.raise_for_status()
+        data = resp.json()
+        content = data.get("content", [])
+        listed += content
+        if len(content) < 100 or len(listed) >= data.get("totalFound", 0):
+            break
+    india = [j for j in listed if ((j.get("location") or {}).get("country") or "").lower() == "in"]
+
+    details: dict = {}
+    if with_details:
+        sem = asyncio.Semaphore(4)
+
+        async def one(j: dict) -> None:
+            async with sem:
+                try:
+                    r = await client.get(SMARTRECRUITERS_DETAIL_URL.format(slug=slug, id=j["id"]))
+                    r.raise_for_status()
+                    details[j["id"]] = r.json()
+                except Exception:
+                    pass  # this job just keeps an empty description
+
+        await asyncio.gather(*(one(j) for j in india[:max_details]))
+    return normalize_smartrecruiters(company, india, details)
+
+
+async def fetch_company(client, company: dict, with_details: bool = True) -> list[dict]:
     source = company["source"]
+    if source == "smartrecruiters":
+        return await _fetch_smartrecruiters(client, company, with_details)
     if source not in _SOURCES:
-        raise ValueError(f"unknown source '{source}' (use greenhouse, lever or ashby)")
+        raise ValueError(f"unknown source '{source}' (use {', '.join(SOURCE_NAMES)})")
     url_tpl, normalize = _SOURCES[source]
     resp = await client.get(url_tpl.format(slug=company["slug"]))
     resp.raise_for_status()
