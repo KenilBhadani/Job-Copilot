@@ -107,7 +107,7 @@ _SOURCES = {
     "ashby": (ASHBY_URL, normalize_ashby),
 }
 
-
+SOURCE_NAMES = tuple(_SOURCES)  # ('greenhouse', 'lever', 'ashby')
 # ---- fetching ----------------------------------------------------------------------
 
 async def fetch_company(client, company: dict) -> list[dict]:

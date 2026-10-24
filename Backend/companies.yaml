@@ -17,3 +17,11 @@ companies:
   - { name: OpenAI,      source: ashby,      slug: openai }
   - { name: Notion,      source: ashby,      slug: notion }
   - { name: Ramp,        source: ashby,      slug: ramp }
+  - { name: Okta,    source: greenhouse, slug: okta }
+  - { name: Celonis, source: greenhouse, slug: celonis }
+  - { name: GitLab,  source: greenhouse, slug: gitlab }
+  - { name: Toast,   source: greenhouse, slug: toast }
+  - { name: DevRev,  source: greenhouse, slug: devrev }
+  - { name: Elastic, source: greenhouse, slug: elastic }
+  - { name: Meesho,  source: lever,      slug: meesho }
+  - { name: Zeta,    source: lever,      slug: zeta }
