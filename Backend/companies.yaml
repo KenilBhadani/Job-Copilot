@@ -1,0 +1,19 @@
+# Companies to track. `source` is the applicant tracking system (ATS) the company
+# posts on, and `slug` is the board name in its public job-board URL, e.g.
+#   Greenhouse: boards.greenhouse.io/<slug>
+#   Lever:      jobs.lever.co/<slug>
+#   Ashby:      jobs.ashbyhq.com/<slug>
+#
+# These are EXAMPLES. Slugs change and companies switch ATS vendors, so edit this list.
+companies:
+  - { name: Anthropic,   source: greenhouse, slug: anthropic }
+  - { name: Databricks,  source: greenhouse, slug: databricks }
+  - { name: Stripe,      source: greenhouse, slug: stripe }
+  - { name: Cloudflare,  source: greenhouse, slug: cloudflare }
+  - { name: Airbnb,      source: greenhouse, slug: airbnb }
+  - { name: Palantir,    source: lever,      slug: palantir }
+  - { name: CRED,        source: lever,      slug: cred }
+  - { name: Mistral AI,  source: lever,      slug: mistral }
+  - { name: OpenAI,      source: ashby,      slug: openai }
+  - { name: Notion,      source: ashby,      slug: notion }
+  - { name: Ramp,        source: ashby,      slug: ramp }
