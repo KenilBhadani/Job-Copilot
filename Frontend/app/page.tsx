@@ -14,7 +14,7 @@ export default function Home() {
   const [locations, setLocations] = useState("Bengaluru");
   const [roles, setRoles] = useState("");
   const [years, setYears] = useState("");
-  const [includeRemote, setIncludeRemote] = useState(true);
+  // const [includeRemote, setIncludeRemote] = useState(true);
   const [remoteOnly, setRemoteOnly] = useState(false);
 
   const [skills, setSkills] = useState<string[] | null>(null); // null = not edited yet
@@ -36,7 +36,7 @@ export default function Home() {
         skills: skillsOverride ?? undefined,
         experience_years: years ? Number(years) : null,
         locations: list(locations),
-        include_remote: includeRemote,
+        // include_remote: includeRemote,
         remote_only: remoteOnly,
         role_keywords: list(roles),
         use_llm: true,
@@ -100,14 +100,9 @@ export default function Home() {
           <input value={locations} onChange={(e) => setLocations(e.target.value)}
                  placeholder="Bengaluru, Hyderabad, Pune" />
         </label>
-        <label className="check">
-          <input type="checkbox" checked={includeRemote} disabled={remoteOnly}
-                 onChange={(e) => setIncludeRemote(e.target.checked)} />
-          Include remote roles
-        </label>
-        <label className="check">
+             <label className="check">
           <input type="checkbox" checked={remoteOnly} onChange={(e) => setRemoteOnly(e.target.checked)} />
-          Remote only
+          Remote roles only
         </label>
         <div className="two">
           <label className="field">
@@ -182,7 +177,7 @@ export default function Home() {
                 : "No roles match these filters"}
             </h2>
             {data.results.length === 0 && data.total_jobs > 0 && (
-              <p className="hint">Try adding more locations, turning on remote roles, or clearing the experience field.</p>
+               <p className="hint">Try adding more locations, unticking &quot;Remote roles only&quot;, or clearing the experience field.</p>
             )}
             <ol className="jobs">
               {data.results.map((j) => <JobRow key={j.id} job={j} />)}

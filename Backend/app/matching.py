@@ -7,6 +7,7 @@ Text similarity is TF-IDF cosine for Phase 1: no API key, no model download, ful
 deterministic. Phase 2 can replace _similarities() with pgvector embeddings.
 """
 from __future__ import annotations
+import re
 
 from dataclasses import dataclass, field
 
@@ -25,30 +26,59 @@ class Profile:
 @dataclass
 class Filters:
     locations: list[str] = field(default_factory=list)
-    include_remote: bool = True
+    # include_remote: bool = True
     remote_only: bool = False
     role_keywords: list[str] = field(default_factory=list)
 
+MIN_SKILLS_FOR_FULL_CREDIT = 4
+def _has_word(text: str, word: str) -> bool:
+    """True if `word` appears in `text` as a whole word ('india' is not found in 'indiana')."""
+    return re.search(r"(?<![a-z0-9])" + re.escape(word) + r"(?![a-z0-9])", text) is not None
 
 def _norm_loc(s: str) -> str:
     return (s or "").lower().replace("bangalore", "bengaluru").replace("gurgaon", "gurugram")
 
 
+# Words that suggest a "remote" job is open to candidates in India.
+# Change these if you are searching from another country.
+REMOTE_OK_WORDS = ("india", "apac", "asia", "worldwide", "anywhere", "global")
+
+
+def _remote_open_to_me(job: dict, f: Filters) -> bool:
+    """A remote job counts only if its location says it is open to your region.
+
+    'Remote - Mexico', 'Remote in US' and a bare 'Remote' are excluded, because
+    those are usually limited to other countries.
+    """
+    if not job["remote"]:
+        return False
+    loc = _norm_loc(job["location"])
+    places = tuple(_norm_loc(x).strip() for x in f.locations if x.strip())
+    return any(word in loc for word in REMOTE_OK_WORDS + places)
+
+
 def passes_filters(job: dict, profile: Profile, f: Filters) -> bool:
+    """Strict filters, applied together:
+
+    - locations set:      the job's location must mention one of them
+    - remote_only ticked: the job must also be remote
+    - so Pune + remote means jobs that are remote AND in Pune.
+    - remote_only with no location: remote jobs open to your region (REMOTE_OK_WORDS).
+    """
+    loc = _norm_loc(job["location"])
+    places = [p for p in (_norm_loc(x).strip() for x in f.locations) if p]
+    if places and not any(_has_word(loc, p) for p in places):
+        return False
     if f.remote_only:
         if not job["remote"]:
             return False
-    elif f.locations:
-        loc = _norm_loc(job["location"])
-        in_place = any(_norm_loc(x).strip() and _norm_loc(x).strip() in loc for x in f.locations)
-        if not (in_place or (f.include_remote and job["remote"])):
+        if not places and not _remote_open_to_me(job, f):
             return False
     # Skip roles that ask for clearly more experience than the candidate has (1 year of slack).
     need = job.get("min_years")
     if profile.years is not None and need is not None and need > profile.years + 1:
         return False
     return True
-
 
 def _similarities(profile_text: str, job_texts: list[str]) -> list[float]:
     try:
@@ -95,7 +125,9 @@ def rank(profile: Profile, jobs: list[dict], f: Filters, limit: int = 30):
         n_req = len(job["skills_required"])
         sim_n = sim / max_sim  # 1.0 for the most similar job in this batch
         if n_req:
-            req_cov = len(req_m) / n_req
+                        # A posting that names only 1-2 skills can't earn full marks: matching "1 of 1"
+            # says little. Treat it as if it listed at least MIN_SKILLS_FOR_FULL_CREDIT.
+            req_cov = len(req_m) / max(n_req, MIN_SKILLS_FOR_FULL_CREDIT)
             if job["skills_preferred"]:
                 pref_cov = len(pref_m) / len(job["skills_preferred"])
                 score = 0.50 * req_cov + 0.10 * pref_cov + 0.40 * sim_n

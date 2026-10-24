@@ -30,7 +30,7 @@ class MatchRequest(BaseModel):
     skills: list[str] | None = None            # set when the user edits the skill chips
     experience_years: float | None = Field(default=None, ge=0, le=50)
     locations: list[str] = []
-    include_remote: bool = True
+    # include_remote: bool = True
     remote_only: bool = False
     role_keywords: list[str] = []
     limit: int = Field(default=30, ge=1, le=100)
@@ -99,7 +99,7 @@ async def match(req: MatchRequest):
         return {"profile": out_profile, "results": [], "total_jobs": 0, "considered": 0}
 
     filters = Filters(locations=[l for l in req.locations if l.strip()],
-                      include_remote=req.include_remote, remote_only=req.remote_only,
+                      remote_only=req.remote_only,
                       role_keywords=req.role_keywords)
     results, considered = rank(profile, jobs, filters, req.limit)
 

@@ -24,7 +24,7 @@ export type MatchRequest = {
   skills?: string[];
   experience_years?: number | null;
   locations: string[];
-  include_remote: boolean;
+  // include_remote: boolean;
   remote_only: boolean;
   role_keywords: string[];
   use_llm: boolean;
