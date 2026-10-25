@@ -78,6 +78,16 @@ def all_jobs(path: str | None = None) -> list[dict]:
         out.append(d)
     return out
 
+def get_job(job_id: str, path: str | None = None) -> dict | None:
+    with connect(path) as c:
+        r = c.execute("SELECT * FROM jobs WHERE id = ?", (job_id,)).fetchone()
+    if r is None:
+        return None
+    d = dict(r)
+    d["remote"] = bool(d["remote"])
+    d["skills_required"] = json.loads(d["skills_required"] or "[]")
+    d["skills_preferred"] = json.loads(d["skills_preferred"] or "[]")
+    return d
 
 def stats(path: str | None = None) -> dict:
     with connect(path) as c:

@@ -12,6 +12,7 @@ from . import config, db, llm, resume, sources
 from .matching import Filters, rank
 from .profile import build_profile
 from .skills import classify_job_skills, min_years_required
+from .agents.gap import analyze_gap
 
 
 @asynccontextmanager
@@ -35,6 +36,12 @@ class MatchRequest(BaseModel):
     role_keywords: list[str] = []
     limit: int = Field(default=30, ge=1, le=100)
     use_llm: bool = True
+
+class GapRequest(BaseModel):
+    job_id: str
+    resume_text: str = ""
+    skills: list[str] | None = None
+    experience_years: float | None = Field(default=None, ge=0, le=50)
 
 
 def _enrich(job: dict) -> dict:
@@ -111,3 +118,15 @@ async def match(req: MatchRequest):
                 r["why"] = t
 
     return {"profile": out_profile, "results": results, "total_jobs": len(jobs), "considered": considered}
+
+@app.post("/api/agents/gap")
+async def gap(req: GapRequest):
+    """Gap Analyzer: what separates you from this job, and what to learn first."""
+    job = db.get_job(req.job_id)
+    if not job:
+       raise HTTPException(404, "Job not found. It may have closed since the last refresh.")
+    text = req.resume_text.strip()
+    if len(text) < 30 and not req.skills:
+        raise HTTPException(400, "Paste your resume, or at least a few lines about your skills.")
+    profile = await build_profile(text, req.skills, req.experience_years, use_llm=False)
+    return await analyze_gap(profile, job)
