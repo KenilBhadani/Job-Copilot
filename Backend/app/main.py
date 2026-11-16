@@ -14,6 +14,7 @@ from .profile import build_profile
 from .skills import classify_job_skills, min_years_required
 from .agents.gap import analyze_gap
 from .agents.tailor import tailor_resume
+from .agents.workflow import RunManager
 
 
 @asynccontextmanager
@@ -48,6 +49,20 @@ class TailorRequest(BaseModel):
     job_id: str
     resume_text: str
     skills: list[str] | None = None
+
+runs = RunManager()
+
+
+class RunRequest(BaseModel):
+    job_id: str
+    resume_text: str
+    skills: list[str] | None = None
+    experience_years: float | None = Field(default=None, ge=0, le=50)
+
+
+class DecisionRequest(BaseModel):
+    action: str
+    edits: dict[str, str] = {}
 
 
 def _enrich(job: dict) -> dict:
@@ -149,3 +164,24 @@ async def tailor(req: TailorRequest):
     profile = await build_profile(text, req.skills, None, use_llm=False)
     return await tailor_resume(text, job, profile.skills)
 
+@app.post("/api/runs")
+async def start_run(req: RunRequest):
+    """Start the application workflow for one job. It runs until it needs your approval."""
+    job = db.get_job(req.job_id)
+    if not job:
+        raise HTTPException(404, "Job not found. It may have closed since the last refresh.")
+    text = req.resume_text.strip()
+    if len(text) < 30:
+        raise HTTPException(400, "Paste your resume, with each achievement on its own line starting with '-'.")
+    profile = await build_profile(text, req.skills, req.experience_years, use_llm=False)
+    return await runs.start(job, text, profile.skills, profile.years)
+
+
+@app.post("/api/runs/{run_id}/decision")
+async def decide_run(run_id: str, req: DecisionRequest):
+    """Approve or reject a paused run, optionally editing bullets."""
+    try:
+        return await runs.decide(run_id, {"action": req.action, "edits": req.edits})
+    except KeyError:
+        raise HTTPException(404, "No run is waiting for approval with that id. It may be finished, "
+                                 "or the server was restarted.")
