@@ -13,6 +13,7 @@ from .matching import Filters, rank
 from .profile import build_profile
 from .skills import classify_job_skills, min_years_required
 from .agents.gap import analyze_gap
+from .agents.tailor import tailor_resume
 
 
 @asynccontextmanager
@@ -42,6 +43,11 @@ class GapRequest(BaseModel):
     resume_text: str = ""
     skills: list[str] | None = None
     experience_years: float | None = Field(default=None, ge=0, le=50)
+
+class TailorRequest(BaseModel):
+    job_id: str
+    resume_text: str
+    skills: list[str] | None = None
 
 
 def _enrich(job: dict) -> dict:
@@ -130,3 +136,16 @@ async def gap(req: GapRequest):
         raise HTTPException(400, "Paste your resume, or at least a few lines about your skills.")
     profile = await build_profile(text, req.skills, req.experience_years, use_llm=False)
     return await analyze_gap(profile, job)
+
+@app.post("/api/agents/tailor")
+async def tailor(req: TailorRequest):
+    """Resume Tailor + Critic: rewrite your bullets for a job without inventing facts."""
+    job = db.get_job(req.job_id)
+    if not job:
+        raise HTTPException(404, "Job not found. It may have closed since the last refresh.")
+    text = req.resume_text.strip()
+    if len(text) < 30:
+        raise HTTPException(400, "Paste your resume, with each achievement on its own line starting with '-'.")
+    profile = await build_profile(text, req.skills, None, use_llm=False)
+    return await tailor_resume(text, job, profile.skills)
+
