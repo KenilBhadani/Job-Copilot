@@ -40,3 +40,14 @@ companies:
   - { name: Samsara,     source: greenhouse,      slug: samsara }
   - { name: Observe.AI,  source: greenhouse,      slug: observeai }
   - { name: Atlan,       source: ashby,           slug: atlan }
+  - { name: Cohere Health,             source: greenhouse, slug: coherehealth }
+  - { name: SonicWall,                 source: greenhouse, slug: sonicwall }
+  - { name: Addepar,                   source: greenhouse, slug: addepar1 }
+  - { name: Truveta,                   source: greenhouse, slug: truveta }
+  - { name: OneTrust,                  source: greenhouse, slug: onetrust }
+  - { name: Redwood Software,          source: greenhouse, slug: redwoodsoftware }
+  - { name: Global Healthcare Exchange, source: greenhouse, slug: globalhealthcareexchangeinc }
+  - { name: IMC,                       source: greenhouse, slug: imc }
+  - { name: DoorDash India,            source: greenhouse, slug: doordashindia }
+  - { name: Speechify,                 source: greenhouse, slug: speechify }
+  - { name: ConnectWise,               source: greenhouse, slug: connectwise }

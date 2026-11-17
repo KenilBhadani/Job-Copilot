@@ -10,8 +10,12 @@ import sys
 
 from app.sources import SOURCE_NAMES, fetch_company
 
-INDIA = ("india", "bengaluru", "bangalore", "hyderabad", "pune", "mumbai",
-         "gurugram", "gurgaon", "delhi", "noida", "chennai")
+INDIA_RE = re.compile(r"(?<![a-z])(india|bengaluru|bangalore|hyderabad|pune|mumbai|gurugram|gurgaon|delhi|noida|chennai)(?![a-z])")
+
+
+def is_india(location: str) -> bool:
+    """Whole-word match, so 'Indianapolis' does not count as India."""
+    return bool(INDIA_RE.search((location or "").lower()))
 
 
 def variants(name: str) -> list[str]:
@@ -46,7 +50,7 @@ async def main(names: list[str]) -> None:
                 continue
             print(f"\n{name}:")
             for source, slug, jobs in hits:
-                in_india = sum(1 for j in jobs if any(k in j["location"].lower() for k in INDIA))
+                in_india = sum(1 for j in jobs if is_india(j["location"]))
                 print(f"  {source}/{slug}: {len(jobs)} jobs, {in_india} in India")
                 print(f"    first job: {jobs[0]['title']} -> {jobs[0]['url']}")
                 print(f"    paste:  - {{ name: {name}, source: {source}, slug: {slug} }}")
